@@ -1,11 +1,11 @@
-function [renderedImages] = render(zf,normalsFunc,RCam,tCam,lightSourceTab,albedoFunc,K,repCam,intLight,imageSize)
+function [renderedImages,depthMap] = render(zf,normalsFunc,c2wPose,...
+    lightSourceTab,albedoFunc,K,repCam,intLight,imageSize)
 
 % Render an image from the geometry and camera position
 % Inputs :
 % - zf : geometry (function that gives Z coord from X and Y coords)
 % - normalsFunc : normals function
-% - RCam : rotation matrix of the camera
-% - tCam : translation vector of the camera
+% - c2wPose : camera2world pose
 % - lightSourceTab : light sources all considered directional
 % - albedoFunc : albedoFunc
 % - K : calibration matrix
@@ -19,7 +19,7 @@ function [renderedImages] = render(zf,normalsFunc,RCam,tCam,lightSourceTab,albed
 displayDebug_ = 0;
 
 % Projection matrix
-projMat = K*[RCam tCam];
+projMat = K*c2wPose;
 
 % Pixels
 u = 1:imageSize;
@@ -69,6 +69,11 @@ for i = 1:nPixels
 end
 points = tZero.*u+U1(1:3,:);
 
+% Depthmap
+cameraCenter = -c2wPose(:,1:3)'*c2wPose(:,4);
+depthMap = vecnorm(points - cameraCenter);
+depthMap = reshape(depthMap,imageSize,imageSize);
+
 % Normals
 normals = normalsFunc(points(1,:),points(2,:));
 normals = normals./vecnorm(normals);
@@ -82,9 +87,10 @@ end
 
 % Albedo
 albedo = albedoFunc(points(1,:),points(2,:));
+nColors = size(albedo,1);
 
 % Rendering
 for i = 1:size(lightSourceTab,2)
     renderedImage = repCam*intLight*albedo'.*(normals'*lightSourceTab(:,i));
-    renderedImages(:,:,:,i) = reshape(uint8(renderedImage),imageSize,imageSize);
+    renderedImages(:,:,:,i) = reshape(uint8(renderedImage),imageSize,imageSize,nColors);
 end
