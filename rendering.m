@@ -78,7 +78,7 @@ lightRange = 2;
 % Display camera
 if display_
     for i = 1:nCameras
-        RCam = w2cPoses(:,1:3,i); centerCam = squeeze(w2cPoses(:,4,i));
+        RCam = w2cPoses(:,1:3,i); centerCam = -RCam'*squeeze(w2cPoses(:,4,i));
         plotCamera('Orientation',RCam,'Location',centerCam,'Size',0.1);
     end
     xlabel('x')
@@ -90,9 +90,9 @@ end
 
 % w2c -> c2w poses
 c2wPoses = zeros(size(w2cPoses));
-%c2wPoses(:,1:3,:) = pagetranspose(w2cPoses(:,1:3,:));
-c2wPoses(:,1:3,:) = w2cPoses(:,1:3,:);
-c2wPoses(:,4,:) = -pagemtimes(w2cPoses(:,1:3,:),'None',...
+c2wPoses(:,1:3,:) = pagetranspose(w2cPoses(:,1:3,:));
+%c2wPoses(:,1:3,:) = w2cPoses(:,1:3,:);
+c2wPoses(:,4,:) = -pagemtimes(w2cPoses(:,1:3,:),'transpose',...
     w2cPoses(:,4,:),'None');
 
 % Folder creation
@@ -122,9 +122,9 @@ parfor i = 1:nCameras
 %         lightSourceTab,albedoBinFunc,K,repCam,intLight,imageSize);
 
     % Rendering RGB images
-    [renderedImages,depthMap] = render(zFunc,normalsFunc,c2wPoses(:,:,i),...
+    [renderedImages,depthMap] = render(zFunc,normalsFunc,w2cPoses(:,:,i),...
         lightSourceTab,albedoRGBFunc,K,repCam,intLight,imageSize);
-    bds(:,i) = [max(depthMap,[],'all'); min(depthMap,[],'all')];
+    bds(:,i) = [max(depthMap,[],'all'); min(depthMap,[],'all')]; %FAR / NEAR
 
     % Save images
     for j = 1:nLights

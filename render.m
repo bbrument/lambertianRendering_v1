@@ -1,11 +1,11 @@
-function [renderedImages,depthMap] = render(zf,normalsFunc,c2wPose,...
+function [renderedImages,depthMap] = render(zf,normalsFunc,w2cPose,...
     lightSourceTab,albedoFunc,K,repCam,intLight,imageSize)
 
 % Render an image from the geometry and camera position
 % Inputs :
 % - zf : geometry (function that gives Z coord from X and Y coords)
 % - normalsFunc : normals function
-% - c2wPose : camera2world pose
+% - w2cPose : world tp camera pose
 % - lightSourceTab : light sources all considered directional
 % - albedoFunc : albedoFunc
 % - K : calibration matrix
@@ -19,7 +19,7 @@ function [renderedImages,depthMap] = render(zf,normalsFunc,c2wPose,...
 displayDebug_ = 0;
 
 % Projection matrix
-projMat = K*c2wPose;
+projMat = K*w2cPose;
 
 % Pixels
 u = 1:imageSize;
@@ -70,7 +70,7 @@ end
 points = tZero.*u+U1(1:3,:);
 
 % Depthmap
-cameraCenter = -c2wPose(:,1:3)'*c2wPose(:,4);
+cameraCenter = -w2cPose(:,1:3)'*w2cPose(:,4);
 depthMap = vecnorm(points - cameraCenter);
 depthMap = reshape(depthMap,imageSize,imageSize);
 

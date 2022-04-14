@@ -24,8 +24,9 @@ end
 nCamPos = size(centerCam,2);
 w2cPoses = zeros(3,4,nCamPos);
 for ii = 1:nCamPos
-    w2cPoses(:,1:3,ii) = generateCamera(centerCam(:,ii),[0;0;0]);
-    w2cPoses(:,4,ii) = centerCam(:,ii);
+    RCam = generateCamera(centerCam(:,ii),[0;0;0]);
+    w2cPoses(:,1:3,ii) = RCam;
+    w2cPoses(:,4,ii) = -RCam * centerCam(:,ii);
 end
 
 % Light sources
