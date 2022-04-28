@@ -52,7 +52,7 @@ params.normalsFunc = @(X,Y) [-(2^(1/2).*exp(-(mu(1) - X).^2/(2*sigma(1)^2) - (mu
 
 % Albedo
 params.repCam = 255; % camera response
-params.albedoImage = imread('damier.jpg'); % albedo image
+params.albedoImage = imread('checkerboard.png'); % albedo image
 params.albedoSize = size(params.albedoImage); % albedo size
 params.geomRange = [-5 5]; % where you want to map the albedo on the geometry
 

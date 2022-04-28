@@ -4,7 +4,7 @@ clear
 
 % General parameters
 display_ = 1;
-dataPath = 'data/damier_persp/';
+dataPath = 'data/checkerboardExample/';
 imagesFolder = [ dataPath 'images/' ];
 mkdir(imagesFolder)
 
