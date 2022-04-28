@@ -3,9 +3,9 @@
 MATLAB implementation of a lambertian renderer without bounce from geometry, albedo, light and camera poses.
 
 <p float="left">
-  <img src="data/checkerboardExample/images/image_01.png" width="100" />
-  <img src="data/checkerboardExample/images/image_12.png" width="100" /> 
-  <img src="data/checkerboardExample/images/image_32.png" width="100" />
+  <img src="data/checkerboardExample/images/image_01.png" width="250" />
+  <img src="data/checkerboardExample/images/image_12.png" width="250" /> 
+  <img src="data/checkerboardExample/images/image_32.png" width="250" />
 </p>
 
 ## Setup
