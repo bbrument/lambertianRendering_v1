@@ -2,9 +2,9 @@
 
 MATLAB implementation of a lambertian renderer without bounce from geometry, albedo, light and camera poses.
 
-![damier1](data/damier_persp/images/001.png)
-![damier2](data/damier_persp/images/012.png)
-![damier3](data/damier_persp/images/032.png)
+![damier1](data/checkerboardExample/images/001.png)
+![damier2](data/checkerboardExample/images/012.png)
+![damier3](data/checkerboardExample/images/032.png)
 
 ## Setup
 
