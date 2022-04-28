@@ -4,7 +4,7 @@ clear
 
 % General parameters
 display_ = 1;
-dataPath = ['data/damier_ortho/'];
+dataPath = 'data/damier_persp/';
 imagesFolder = [ dataPath 'images/' ];
 mkdir(imagesFolder)
 
@@ -38,9 +38,9 @@ end
 [renderedImages,depthMaps] = render(params);
 % bounds = [min(depthMaps,[],'all'); max(depthMaps,[],'all')]; %NEAR / FAR
 
-% Save data and images
+%% Save data and images
 save([ dataPath 'data.mat' ],'params','renderedImages','depthMaps')
 for ii = 1:nCams
-    imwrite(renderedImages(:,:,:,ii), ...
+    imwrite(uint8(renderedImages(:,:,:,ii)), ...
         [ imagesFolder 'image_' sprintf('%02d',ii) '.png' ]);
 end

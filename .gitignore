@@ -1,3 +1,7 @@
+.gitignore
 *.asv
 
+symbTest.m
+
 data/
+!data/damier_persp/
