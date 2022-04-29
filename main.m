@@ -35,12 +35,47 @@ if display_
 end
 
 % Images rendering and depth maps
-[renderedImages,depthMaps] = render(params);
-% bounds = [min(depthMaps,[],'all'); max(depthMaps,[],'all')]; %NEAR / FAR
+[renderedImages,depthMaps,distMaps,normalMaps,albedoMaps] = render(params);
+
+%% Post-processing depthMaps and normalMaps
+
+% Depth maps
+bounds = zeros(2,nCams);
+for ii = 1:nCams
+    bounds(:,ii) = [min(depthMaps(:,:,ii),[],'all'); ...
+        max(depthMaps(:,:,ii),[],'all')]; %NEAR / FAR
+end
+depthMapsPlot = depthMaps/max(bounds(2,:));
+
+% Normal maps
+normalMapsPlot = (normalMaps+1)/2;
+
+if display_
+    figure; hold on;
+
+    subplot(2,2,1);
+    imshow(renderedImages(:,:,:,1));
+    title('Rendered image')
+
+    subplot(2,2,2);
+    imshow(depthMapsPlot(:,:,1));
+    title('Depth map')
+
+    subplot(2,2,3);
+    imshow(normalMapsPlot(:,:,:,1));
+    title('Normal map')
+
+    subplot(2,2,4);
+    imshow(albedoMaps(:,:,:,1));
+    title('Albedo map')
+end
+
 
 %% Save data and images
-save([ dataPath 'data.mat' ],'params','renderedImages','depthMaps')
+save([ dataPath 'data.mat' ],...
+    'params','renderedImages','depthMaps','bounds','distMaps',...
+    'normalMaps','albedoMaps')
 for ii = 1:nCams
-    imwrite(uint8(renderedImages(:,:,:,ii)), ...
+    imwrite(renderedImages(:,:,:,ii), ...
         [ imagesFolder 'image_' sprintf('%02d',ii) '.png' ]);
 end

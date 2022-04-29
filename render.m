@@ -1,5 +1,5 @@
 %% Render an image from the geometry and camera position
-function [renderedImages,depthMaps] = render(params)
+function [renderedImages,depthMaps,distMaps,normalMaps,albedoMaps] = render(params)
 
 % Options
 displayDebug_ = 0;
@@ -23,12 +23,14 @@ lightSource = params.lightSource;
 zFunc = params.zFunc;
 normalsFunc = params.normalsFunc;
 
-repCam = params.repCam;
 albedoFunc = params.albedoFunc;
 
 % Initialization
 renderedImages = zeros([imageSize(1:2) nChannels nCams]);
 depthMaps = zeros([imageSize(1:2) nCams]);
+distMaps = zeros([imageSize(1:2) nCams]);
+normalMaps = zeros([imageSize(1:2) 3 nCams]);
+albedoMaps = zeros([imageSize(1:2) nChannels nCams]);
 
 % LOOP
 parfor ii = 1:nCams
@@ -90,14 +92,20 @@ parfor ii = 1:nCams
     end
     points = tZero.*u+U1(1:3,:);
 
-    % Depth map
+    % Depth and distance maps
     cameraCenter = -w2cPose(:,1:3)'*w2cPose(:,4);
-    depthMap = vecnorm(points - cameraCenter);
+    vecMap = cameraCenter - points;
+
+    depthMap = abs(vecMap(3,:));
     depthMaps(:,:,ii) = reshape(depthMap,imageSize(1),imageSize(2));
+
+    distMap = vecnorm(vecMap);
+    distMaps(:,:,ii) = reshape(distMap,imageSize(1),imageSize(2));
 
     % Normals
     normals = normalsFunc(points(1,:),points(2,:));
     normals = normals./vecnorm(normals);
+    normalMaps(:,:,:,ii) = reshape(normals',imageSize(1),imageSize(2),3);
     if displayDebug_
         selectedPixels = 1:round(nPixels/111):nPixels;
         plot3(points(1,selectedPixels),points(2,selectedPixels),points(3,selectedPixels),'mx','Linewidth',2); % Intersection point
@@ -108,10 +116,12 @@ parfor ii = 1:nCams
 
     % Albedo
     albedo = albedoFunc(points(1,:),points(2,:));
+    albedoMaps(:,:,:,ii) = reshape(albedo',...
+        imageSize(1),imageSize(2),nChannels);
 
     % Rendering
-    renderedImage = repCam*lightIntensity*albedo'.*(normals'*lightSource);
-    renderedImages(:,:,:,ii) = reshape(uint8(renderedImage),...
+    renderedImage = lightIntensity*albedo'.*(normals'*lightSource);
+    renderedImages(:,:,:,ii) = reshape(renderedImage,...
         imageSize(1),imageSize(2),nChannels);
 
 end
