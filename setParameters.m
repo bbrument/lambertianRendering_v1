@@ -18,7 +18,7 @@ f = 2000/params.factor; % focal length
 params.K = [f 0 px ; 0 f py ; 0 0 1];
 
 % Camera poses (generated on a grid pointing at the center of the scene)
-cameraGrid = [6 6]; % number of cameras along x and y
+cameraGrid = [3 3]; % number of cameras along x and y
 cameraRange = 3; % range along both axis
 params.w2cPoses = multiView(cameraGrid,cameraRange); % cameras poses (world-to-camera matrices)
 params.nCameras = size(params.w2cPoses,3); % number of cameras

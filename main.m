@@ -5,8 +5,6 @@ clear
 % General parameters
 display_ = 1;
 dataPath = 'data/checkerboardExample/';
-imagesFolder = [ dataPath 'images/' ];
-mkdir(imagesFolder)
 
 % Set parameters
 params = setParameters();
@@ -35,7 +33,7 @@ if display_
 end
 
 % Images rendering and depth maps
-[renderedImages,depthMaps,distMaps,normalMaps,albedoMaps] = render(params);
+[renderedImages,depthMaps,distMaps,normalMaps,albedoMaps,pointMaps] = render(params);
 
 %% Post-processing depthMaps and normalMaps
 
@@ -48,34 +46,80 @@ end
 depthMapsPlot = depthMaps/max(bounds(2,:));
 
 % Normal maps
-normalMapsPlot = (normalMaps+1)/2;
+normalMapsPlot = normalMaps;
+normalMapsPlot(:,:,2:3,:) = -normalMapsPlot(:,:,2:3,:);
+normalMapsPlot = (normalMapsPlot+1)/2;
+
+% if display_
+%     figure; hold on;
+%     set(gca, 'YDir','reverse')
+%     axis equal
+%     indImage = 5;
+%     step = 20;
+% 
+%     projMat = params.K * params.w2cPoses(:,:,indImage);
+%     for ii = 1:step:500
+%         for jj = 1:step:500
+%             
+%             point = projMat*[ squeeze(pointMaps(ii,jj,:,indImage)); 1 ];
+%             normalPoint = projMat*[ squeeze(pointMaps(ii,jj,:,indImage) + ...
+%                 normalMaps(ii,jj,:,indImage)); 1 ];
+% 
+%             point = point/point(3);
+%             normalPoint = normalPoint/normalPoint(3);
+%             normalProj = normalPoint - point;
+% 
+%             plot(point(1),point(2),'mx');
+%             quiver(point(1),point(2),normalProj(1),normalProj(2),0.1,'b');
+%         end
+%     end
+% 
+%     
+% end
 
 if display_
+    indImage = 5;
     figure; hold on;
 
     subplot(2,2,1);
-    imshow(renderedImages(:,:,:,1));
+    imshow(renderedImages(:,:,:,indImage));
     title('Rendered image')
 
     subplot(2,2,2);
-    imshow(depthMapsPlot(:,:,1));
+    imshow(depthMapsPlot(:,:,indImage));
     title('Depth map')
 
     subplot(2,2,3);
-    imshow(normalMapsPlot(:,:,:,1));
+    imshow(normalMapsPlot(:,:,:,indImage));
     title('Normal map')
 
     subplot(2,2,4);
-    imshow(albedoMaps(:,:,:,1));
+    imshow(albedoMaps(:,:,:,indImage));
     title('Albedo map')
 end
 
 
 %% Save data and images
+imagesFolder = [ dataPath 'images/' ];
+depthFolder = [ dataPath 'depth/' ];
+normalFolder = [ dataPath 'normal/' ];
+albedoFolder = [ dataPath 'albedo/' ];
+mkdir(imagesFolder)
+mkdir(depthFolder)
+mkdir(normalFolder)
+mkdir(albedoFolder)
+
+for ii = 1:nCams
+    imwrite(renderedImages(:,:,:,ii), ...
+        [ imagesFolder sprintf('%02d',ii) '.png' ]);
+    imwrite(depthMapsPlot(:,:,ii), ...
+        [ depthFolder sprintf('%02d',ii) '.png' ]);
+    imwrite(normalMapsPlot(:,:,:,ii), ...
+        [ normalFolder sprintf('%02d',ii) '.png' ]);
+    imwrite(albedoMaps(:,:,:,ii), ...
+        [ albedoFolder sprintf('%02d',ii) '.png' ]);
+end
+
 save([ dataPath 'data.mat' ],...
     'params','renderedImages','depthMaps','bounds','distMaps',...
     'normalMaps','albedoMaps')
-for ii = 1:nCams
-    imwrite(renderedImages(:,:,:,ii), ...
-        [ imagesFolder 'image_' sprintf('%02d',ii) '.png' ]);
-end

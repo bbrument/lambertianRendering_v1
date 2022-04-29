@@ -1,5 +1,5 @@
 %% Render an image from the geometry and camera position
-function [renderedImages,depthMaps,distMaps,normalMaps,albedoMaps] = render(params)
+function [renderedImages,depthMaps,distMaps,normalMaps,albedoMaps,pointMaps] = render(params)
 
 % Options
 displayDebug_ = 0;
@@ -13,9 +13,6 @@ K = params.K;
 nCams = params.nCameras;
 w2cPoses = params.w2cPoses;
 cameraType = params.cameraType;
-if strcmp(cameraType,'ortho')
-    w2cPoses(3,1:3,:) = 0;
-end
 
 lightIntensity = params.lightIntensity;
 lightSource = params.lightSource;
@@ -31,6 +28,7 @@ depthMaps = zeros([imageSize(1:2) nCams]);
 distMaps = zeros([imageSize(1:2) nCams]);
 normalMaps = zeros([imageSize(1:2) 3 nCams]);
 albedoMaps = zeros([imageSize(1:2) nChannels nCams]);
+pointMaps = zeros([imageSize(1:2) 3 nCams]);
 
 % LOOP
 parfor ii = 1:nCams
@@ -40,9 +38,12 @@ parfor ii = 1:nCams
 
     % Load data
     w2cPose = w2cPoses(:,:,ii);
-
-    % Projection matrix
-    projMat = K*w2cPose;
+    if strcmp(cameraType,'ortho')
+        orthoMat = diag([1 1 0]);
+        projMat = K*[orthoMat*w2cPose(:,1:3) w2cPose(:,4)];
+    else
+        projMat = K*w2cPose;
+    end
 
     % Pixels
     u = 1:imageSize;
@@ -91,6 +92,7 @@ parfor ii = 1:nCams
         end
     end
     points = tZero.*u+U1(1:3,:);
+    pointMaps(:,:,:,ii) = reshape(points',imageSize(1),imageSize(2),3);
 
     % Depth and distance maps
     cameraCenter = -w2cPose(:,1:3)'*w2cPose(:,4);
@@ -105,12 +107,13 @@ parfor ii = 1:nCams
     % Normals
     normals = normalsFunc(points(1,:),points(2,:));
     normals = normals./vecnorm(normals);
-    normalMaps(:,:,:,ii) = reshape(normals',imageSize(1),imageSize(2),3);
+    normalMap = w2cPose(:,1:3)*normals;
+    normalMaps(:,:,:,ii) = reshape(normalMap',imageSize(1),imageSize(2),3);
     if displayDebug_
-        selectedPixels = 1:round(nPixels/111):nPixels;
+        selectedPixels = 1:round(nPixels/1000):nPixels;
         plot3(points(1,selectedPixels),points(2,selectedPixels),points(3,selectedPixels),'mx','Linewidth',2); % Intersection point
         quiver3(points(1,selectedPixels),points(2,selectedPixels),points(3,selectedPixels),...
-            normals(1,selectedPixels),normals(2,selectedPixels),normals(3,selectedPixels),'g'); % Normal on this point
+            normals(1,selectedPixels),normals(2,selectedPixels),normals(3,selectedPixels),4,'g','Linewidth',2); % Normal on this point
         pause
     end
 
