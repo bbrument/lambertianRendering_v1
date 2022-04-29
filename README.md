@@ -31,3 +31,4 @@ Check out the function `setParameters.m` to change camera and scene parameters.
 
 ### Running code
 Once your parameters are set, run `main.m` script to get the rendered images of your scene.
+Corresponding depth, normal and albedo maps are available.
