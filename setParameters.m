@@ -11,7 +11,7 @@ if strcmp(params.renderType,'rgb') % if renderType is 'rgb', update imageSize an
     params.nChannels = 3;
 end
 
-% Pinhole camera intrinsics
+% Camera intrinsics
 px = 500/params.factor; % principal point
 py = 500/params.factor;
 f = 2000/params.factor; % focal length
@@ -24,7 +24,8 @@ params.w2cPoses = multiView(cameraGrid,cameraRange); % cameras poses (world-to-c
 params.nCameras = size(params.w2cPoses,3); % number of cameras
 
 % Orthographic or perspective camera?
-params.cameraType = 'persp'; % 'persp' or 'ortho'
+params.cameraType = 'ortho'; % 'persp' or 'ortho'
+params.orthoScale = 200;
 
 % World-to-camera matrix (w2c) -> Camera-to-world matrix (c2w)
 params.c2wPoses = zeros(size(params.w2cPoses));

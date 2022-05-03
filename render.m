@@ -1,5 +1,5 @@
 %% Render an image from the geometry and camera position
-function [renderedImages,depthMaps,distMaps,normalMaps,albedoMaps,pointMaps] = render(params)
+function [renderedImages,depthMaps,distMaps,normalMaps,albedoMaps] = render(params)
 
 % Options
 displayDebug_ = 0;
@@ -13,6 +13,7 @@ K = params.K;
 nCams = params.nCameras;
 w2cPoses = params.w2cPoses;
 cameraType = params.cameraType;
+orthoScale = params.orthoScale;
 
 lightIntensity = params.lightIntensity;
 lightSource = params.lightSource;
@@ -39,8 +40,16 @@ parfor ii = 1:nCams
     % Load data
     w2cPose = w2cPoses(:,:,ii);
     if strcmp(cameraType,'ortho')
+        RCam = w2cPose(:,1:3);
+        tCam = w2cPose(:,4);
+        tCam(3) = 1;
+        
+        orthoScaleMat = K;
+        orthoScaleMat(1,1) = orthoScale;
+        orthoScaleMat(2,2) = orthoScale;
+
         orthoMat = diag([1 1 0]);
-        projMat = K*[orthoMat*w2cPose(:,1:3) w2cPose(:,4)];
+        projMat = orthoScaleMat*[orthoMat*RCam tCam];
     else
         projMat = K*w2cPose;
     end
@@ -97,8 +106,9 @@ parfor ii = 1:nCams
     % Depth and distance maps
     cameraCenter = -w2cPose(:,1:3)'*w2cPose(:,4);
     vecMap = cameraCenter - points;
+    vecMapCam = w2cPose(:,1:3)*vecMap;
 
-    depthMap = abs(vecMap(3,:));
+    depthMap = abs(vecMapCam(3,:));
     depthMaps(:,:,ii) = reshape(depthMap,imageSize(1),imageSize(2));
 
     distMap = vecnorm(vecMap);
