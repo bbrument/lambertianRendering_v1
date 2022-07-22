@@ -25,7 +25,7 @@ params.nCameras = size(params.w2cPoses,3); % number of cameras
 
 % Orthographic or perspective camera?
 params.cameraType = 'ortho'; % 'persp' or 'ortho'
-params.orthoScale = 200/params.factor;
+params.orthoScale = 1;%200/params.factor;
 
 % World-to-camera matrix (w2c) -> Camera-to-world matrix (c2w)
 params.c2wPoses = zeros(size(params.w2cPoses));
@@ -46,9 +46,9 @@ params.lightSource = [0;0;1]; % directional light source (default: light comes f
 %     .*exp(-1/2*((X-mu(1)).^2/sigma(1)^2 + (Y-mu(2)).^2/sigma(2)^2));
 
 % Geometry (sphere)
-params.R = 1;
+params.R = 90;
 params.c = [0 0 0];
-params.thrZ = 0.3;
+params.thrZ = params.R*sqrt(1-0.7^2);
 params.zFunc = @(X,Y) sqrt(params.R^2 - (X-params.c(1)).^2 - (Y-params.c(2)).^2) + params.c(3);
 
 % Normals 
