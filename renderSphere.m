@@ -1,8 +1,8 @@
 %% Render an image from the geometry and camera position
-function [renderedImages,depthMaps,distMaps,normalMaps,albedoMaps] = render(params)
+function [renderedImages,maskMaps,depthMaps,distMaps,normalMaps,albedoMaps] = renderSphere(params)
 
 % Options
-displayDebug_ = 1;
+displayDebug_ = 0;
 
 % Parameters
 imageSize = params.imageSize;
@@ -30,6 +30,7 @@ distMaps = zeros([imageSize(1:2) nCams]);
 normalMaps = zeros([imageSize(1:2) 3 nCams]);
 albedoMaps = zeros([imageSize(1:2) nChannels nCams]);
 pointMaps = zeros([imageSize(1:2) 3 nCams]);
+maskMaps = false([imageSize(1:2) nCams]);
 
 % LOOP
 for ii = 1:nCams
@@ -90,6 +91,10 @@ for ii = 1:nCams
             u(1,1),u(2,1),u(3,1),0,'g-','Linewidth',2)
     end
 
+    R = params.R;
+    c = params.c;
+    x_c = c(1); y_c = c(2); z_c = c(3);
+
     % Two specific points of the line : z=0 and z=centerCam(3)
     %lambda1 = -U1(3,:)./u(3,:);
     %p1 = lambda1.*u+U1(1:3,:);
@@ -97,38 +102,62 @@ for ii = 1:nCams
 
     % Intersection of the Plücker line and the geometry
     tZero = zeros(1,nPixels);
+    mask = false(1,nPixels);
     for i = 1:nPixels
-        lambda = (centerCam(3) - U1(3,i)) / u(3,i);
-        U1_mod = U1(1:3,i) + lambda * u(:,i);
+        u_x = u(1,i);
+        u_y = u(2,i);
+        u_z = u(3,i);
+        U_x = U1(1,i);
+        U_y = U1(2,i);
+        U_z = U1(3,i);
+        
+        delta = (2*u_x*(U_x - x_c) + 2*u_y*(U_y - y_c) + 2*u_z*(U_z - z_c))^2 ...
+            - (4*u_x^2 + 4*u_y^2 + 4*u_z^2)*((U_x - x_c)^2 ...
+            - R^2 + (U_y - y_c)^2 + (U_z - z_c)^2);
 
-        intersectionFunc = @(t)(zFunc(t*u(1,i)+U1_mod(1),t*u(2,i)+U1_mod(2))-(t*u(3,i)+U1_mod(3)));
-        if displayDebug_ && 0
-            t_test = -10:0.1:10;
-            points_test = t_test.*u(:,i)+U1_mod;
-            h1 = plot3(points_test(1,:),points_test(2,:),points_test(3,:),'c+');
-            inter_test = intersectionFunc(t_test);
-            [tZero_test,indtZero_test] = min(abs(inter_test));
-            pointsInter_test = points_test(:,indtZero_test);
-            h2 = plot3(pointsInter_test(1),pointsInter_test(2),pointsInter_test(3),'m+',...
-                'Linewidth',5);
-            %pause
-            delete(h1)
-            delete(h2)
-        end
+        denomCom = (u_x^2 + u_y^2 + u_z^2);
 
-        [tZero(i),fVal,exitFlag] = fzero(intersectionFunc,0,optimset('Display','off'));
-        pointInter = tZero(i)*u(1:3,i)+U1_mod;
+        t1 = (u_x*x_c - U_y*u_y - U_z*u_z - U_x*u_x + u_y*y_c ...
+            + u_z*z_c + (R^2*u_x^2 + R^2*u_y^2 + R^2*u_z^2 ...
+            - U_x^2*u_y^2 - U_x^2*u_z^2 + 2*U_x*U_y*u_x*u_y ...
+            + 2*U_x*U_z*u_x*u_z - 2*U_x*u_x*u_y*y_c - 2*U_x*u_x*u_z*z_c ...
+            + 2*U_x*u_y^2*x_c + 2*U_x*u_z^2*x_c - U_y^2*u_x^2 ...
+            - U_y^2*u_z^2 + 2*U_y*U_z*u_y*u_z + 2*U_y*u_x^2*y_c ...
+            - 2*U_y*u_x*u_y*x_c - 2*U_y*u_y*u_z*z_c + 2*U_y*u_z^2*y_c ...
+            - U_z^2*u_x^2 - U_z^2*u_y^2 + 2*U_z*u_x^2*z_c ...
+            - 2*U_z*u_x*u_z*x_c + 2*U_z*u_y^2*z_c - 2*U_z*u_y*u_z*y_c ...
+            - u_x^2*y_c^2 - u_x^2*z_c^2 + 2*u_x*u_y*x_c*y_c ...
+            + 2*u_x*u_z*x_c*z_c - u_y^2*x_c^2 - u_y^2*z_c^2 ...
+            + 2*u_y*u_z*y_c*z_c - u_z^2*x_c^2 - u_z^2*y_c^2)^(1/2))/denomCom;
 
-        if displayDebug_ && 0
-            % plot3([pointInter(1) centerCam(1)],[pointInter(2) centerCam(2)],[pointInter(3) centerCam(3)],'b-')
-            h1 = plot3(pointInter(1),pointInter(2),pointInter(3),'gx',...
-                'Linewidth',5);
-            %pause
-%             delete(h1)
+        t2 = -(U_x*u_x + U_y*u_y + U_z*u_z - u_x*x_c - u_y*y_c ...
+            - u_z*z_c + (R^2*u_x^2 + R^2*u_y^2 + R^2*u_z^2 ...
+            - U_x^2*u_y^2 - U_x^2*u_z^2 + 2*U_x*U_y*u_x*u_y ...
+            + 2*U_x*U_z*u_x*u_z - 2*U_x*u_x*u_y*y_c - 2*U_x*u_x*u_z*z_c ...
+            + 2*U_x*u_y^2*x_c + 2*U_x*u_z^2*x_c - U_y^2*u_x^2 ...
+            - U_y^2*u_z^2 + 2*U_y*U_z*u_y*u_z + 2*U_y*u_x^2*y_c ...
+            - 2*U_y*u_x*u_y*x_c - 2*U_y*u_y*u_z*z_c + 2*U_y*u_z^2*y_c ...
+            - U_z^2*u_x^2 - U_z^2*u_y^2 + 2*U_z*u_x^2*z_c ...
+            - 2*U_z*u_x*u_z*x_c + 2*U_z*u_y^2*z_c - 2*U_z*u_y*u_z*y_c ...
+            - u_x^2*y_c^2 - u_x^2*z_c^2 + 2*u_x*u_y*x_c*y_c ...
+            + 2*u_x*u_z*x_c*z_c - u_y^2*x_c^2 - u_y^2*z_c^2 ...
+            + 2*u_y*u_z*y_c*z_c - u_z^2*x_c^2 - u_z^2*y_c^2)^(1/2))/denomCom;
+
+        t = [t1,t2];
+        pts = t.*u(:,i)+U1(1:3,i);
+        [~,argmaxZ] = max(pts(3,:));
+        if pts(3,argmaxZ) > params.thrZ && delta >= 0
+            tZero(i) = t(argmaxZ);
+            mask(i) = 1;
+        else
+            mask(i) = 0;
         end
     end
-    points = tZero.*u+U1_mod(1:3);
+    points = tZero.*u+U1(1:3,:);
     pointMaps(:,:,:,ii) = reshape(points',imageSize(1),imageSize(2),3);
+
+    % Mask maps
+    maskMaps(:,:,ii) = reshape(mask,imageSize(1),imageSize(2));
 
     % Depth and distance maps
     vecMap = centerCam - points;
@@ -150,7 +179,7 @@ for ii = 1:nCams
         plot3(points(1,selectedPixels),points(2,selectedPixels),points(3,selectedPixels),'mx','Linewidth',2); % Intersection point
         quiver3(points(1,selectedPixels),points(2,selectedPixels),points(3,selectedPixels),...
             normals(1,selectedPixels),normals(2,selectedPixels),normals(3,selectedPixels),4,'g','Linewidth',2); % Normal on this point
-        %pause
+        pause
     end
 
     % Albedo
@@ -164,3 +193,14 @@ for ii = 1:nCams
         imageSize(1),imageSize(2),nChannels);
 
 end
+
+% Apply masks
+for ii = 1:nChannels
+    renderedImages(:,:,ii,:) = squeeze(renderedImages(:,:,ii,:)).*maskMaps;
+    albedoMaps(:,:,ii,:) = squeeze(albedoMaps(:,:,ii,:)).*maskMaps;
+end
+for ii = 1:3
+    normalMaps(:,:,ii,:) = squeeze(normalMaps(:,:,ii,:)).*maskMaps;
+end
+depthMaps = depthMaps.*maskMaps;
+distMaps = distMaps.*maskMaps;

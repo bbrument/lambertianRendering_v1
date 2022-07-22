@@ -2,10 +2,10 @@
 function params = setParameters()
 
 % Camera parameters
-params.factor = 2; % downscale factor
+params.factor = 5; % downscale factor
 params.imageSize = [1000 1000]/params.factor; % rendered image size
 params.nChannels = 1; % number of channels of the rendered image
-params.renderType = 'gray'; % '1' for an homogeneous albedo, 'gray' for gray-scaled one or 'rgb' for an colored one
+params.renderType = '1'; % '1' for an homogeneous albedo, 'gray' for gray-scaled one or 'rgb' for an colored one
 if strcmp(params.renderType,'rgb') % if renderType is 'rgb', update imageSize and nChannels
     params.imageSize = [params.imageSize 3]; 
     params.nChannels = 3;
@@ -25,7 +25,7 @@ params.nCameras = size(params.w2cPoses,3); % number of cameras
 
 % Orthographic or perspective camera?
 params.cameraType = 'ortho'; % 'persp' or 'ortho'
-params.orthoScale = 200;
+params.orthoScale = 200/params.factor;
 
 % World-to-camera matrix (w2c) -> Camera-to-world matrix (c2w)
 params.c2wPoses = zeros(size(params.w2cPoses));
@@ -40,16 +40,27 @@ params.lightSource = [0;0;1]; % directional light source (default: light comes f
 % Scene parameters
 
 % Geometry (here is a bi-variate gaussian)
-mu = [0.2 0.4];
-sigma = [0.7 0.6];
-params.zFunc = @(X,Y) 1/(sigma(1)*sigma(2)*sqrt(2*pi))...
-    .*exp(-1/2*((X-mu(1)).^2/sigma(1)^2 + (Y-mu(2)).^2/sigma(2)^2));
+% mu = [0.2 0.4];
+% sigma = [0.7 0.6];
+% params.zFunc = @(X,Y) 1/(sigma(1)*sigma(2)*sqrt(2*pi))...
+%     .*exp(-1/2*((X-mu(1)).^2/sigma(1)^2 + (Y-mu(2)).^2/sigma(2)^2));
+
+% Geometry (sphere)
+params.R = 1;
+params.c = [0 0 0];
+params.thrZ = 0.3;
+params.zFunc = @(X,Y) sqrt(params.R^2 - (X-params.c(1)).^2 - (Y-params.c(2)).^2) + params.c(3);
 
 % Normals 
 % (calculated analytically : cross product of the x and y gradient components of the zFunc)
-params.normalsFunc = @(X,Y) [-(2^(1/2).*exp(-(mu(1) - X).^2/(2*sigma(1)^2) - (mu(2)-Y).^2/(2*sigma(2)^2)).*(2*mu(1) - 2*X))/(4*pi^(1/2)*sigma(1)^4);
-        -(2^(1/2).*exp(- (mu(1) - X).^2/(2*sigma(1)^2) - (mu(2) - Y).^2/(2*sigma(2)^2)).*(2*mu(2) - 2*Y))/(4*pi^(1/2)*sigma(1)^2*sigma(2)^2);
-        ones(1,size(X,2))];
+% params.normalsFunc = @(X,Y) [-(2^(1/2).*exp(-(mu(1) - X).^2/(2*sigma(1)^2) - (mu(2)-Y).^2/(2*sigma(2)^2)).*(2*mu(1) - 2*X))/(4*pi^(1/2)*sigma(1)^4);
+%         -(2^(1/2).*exp(- (mu(1) - X).^2/(2*sigma(1)^2) - (mu(2) - Y).^2/(2*sigma(2)^2)).*(2*mu(2) - 2*Y))/(4*pi^(1/2)*sigma(1)^2*sigma(2)^2);
+%         ones(1,size(X,2))];
+
+params.normalsFunc = ...
+    @(X,Y) [(X-params.c(1))./sqrt(params.R^2 - (X-params.c(1)).^2 - (Y-params.c(2)).^2);
+            (Y-params.c(2))./sqrt(params.R^2 - (X-params.c(1)).^2 - (Y-params.c(2)).^2);
+            ones(1,size(X,2))];
 
 % Albedo
 params.repCam = 255; % camera response

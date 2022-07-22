@@ -4,7 +4,7 @@ clear
 
 % General parameters
 display_ = 1;
-dataPath = 'data/checkerboardOrthoExample/';
+dataPath = 'data/sphereTest/';
 
 % Set parameters
 params = setParameters();
@@ -15,8 +15,13 @@ if display_
     x = linspace(params.geomRange(1),params.geomRange(2));
     y = x;
     [X,Y] = meshgrid(x,y);
+    X = X(:); Y = Y(:);
     figure; hold on;
-    surf(X,Y,params.zFunc(X,Y),uint8(params.repCam*params.albedoFunc(X,Y)));
+    Z = params.zFunc(X,Y);
+    isReal = imag(Z) < 1e-3;
+    isReal = isReal(:);
+    plot3(X(isReal),Y(isReal),Z(isReal),'b.');
+    %surf(X,Y,params.zFunc(X,Y),uint8(params.repCam*params.albedoFunc(X,Y)));
     shading interp
     axis tight
     for i = 1:nCams
@@ -33,7 +38,8 @@ if display_
 end
 
 % Images rendering and depth maps
-[renderedImages,depthMaps,distMaps,normalMaps,albedoMaps] = render(params);
+[renderedImages,maskMaps,depthMaps,distMaps,normalMaps,albedoMaps] = renderSphere(params);
+% [renderedImages,depthMaps,distMaps,normalMaps,albedoMaps] = render(params);
 
 %% Post-processing depthMaps and normalMaps
 
