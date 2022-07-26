@@ -1,5 +1,5 @@
 %% Render an image from the geometry and camera position
-function [renderedImages,depthMaps,distMaps,normalMaps,albedoMaps] = render(params)
+function [renderedImages,maskMaps,depthMaps,distMaps,normalMaps,albedoMaps] = render(params)
 
 % Options
 displayDebug_ = 1;
@@ -30,6 +30,7 @@ distMaps = zeros([imageSize(1:2) nCams]);
 normalMaps = zeros([imageSize(1:2) 3 nCams]);
 albedoMaps = zeros([imageSize(1:2) nChannels nCams]);
 pointMaps = zeros([imageSize(1:2) 3 nCams]);
+maskMaps = true([imageSize(1:2) nCams]);
 
 % LOOP
 for ii = 1:nCams

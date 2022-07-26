@@ -4,7 +4,7 @@ clear
 
 % General parameters
 display_ = 1;
-dataPath = '/tmp/data/bivarTest/';
+dataPath = '/tmp/data/sphereTest/';
 
 % Set parameters
 params = setParameters();
@@ -38,8 +38,8 @@ if display_
 end
 
 % Images rendering and depth maps
-% [renderedImages,maskMaps,depthMaps,distMaps,normalMaps,albedoMaps] = renderSphere(params);
-[renderedImages,depthMaps,distMaps,normalMaps,albedoMaps] = render(params);
+[renderedImages,maskMaps,depthMaps,distMaps,normalMaps,albedoMaps] = renderSphere(params);
+% [renderedImages,maskMaps,depthMaps,distMaps,normalMaps,albedoMaps] = render(params);
 
 %% Post-processing depthMaps and normalMaps
 
@@ -83,20 +83,28 @@ imagesFolder = [ dataPath 'images/' ];
 depthFolder = [ dataPath 'depth/' ];
 normalFolder = [ dataPath 'normal/' ];
 albedoFolder = [ dataPath 'albedo/' ];
+maskFolder = [ dataPath 'mask/' ];
 mkdir(imagesFolder)
 mkdir(depthFolder)
 mkdir(normalFolder)
 mkdir(albedoFolder)
+mkdir(maskFolder)
 
 for ii = 1:nCams
     imwrite(renderedImages(:,:,:,ii), ...
-        [ imagesFolder sprintf('%02d',ii) '.png' ]);
+        [ imagesFolder sprintf('%02d',ii) '.png' ], ...
+        'Alpha',double(maskMaps(:,:,ii)));
     imwrite(depthMapsPlot(:,:,ii), ...
-        [ depthFolder sprintf('%02d',ii) '.png' ]);
+        [ depthFolder sprintf('%02d',ii) '.png' ], ...
+        'Alpha',double(maskMaps(:,:,ii)));
     imwrite(normalMapsPlot(:,:,:,ii), ...
-        [ normalFolder sprintf('%02d',ii) '.png' ]);
+        [ normalFolder sprintf('%02d',ii) '.png' ], ...
+        'Alpha',double(maskMaps(:,:,ii)));
     imwrite(albedoMaps(:,:,:,ii), ...
-        [ albedoFolder sprintf('%02d',ii) '.png' ]);
+        [ albedoFolder sprintf('%02d',ii) '.png' ], ...
+        'Alpha',double(maskMaps(:,:,ii)));
+    imwrite(double(maskMaps(:,:,ii)), ...
+        [ maskFolder sprintf('%02d',ii) '.png' ]);
 end
 
 save([ dataPath 'data.mat' ],...
