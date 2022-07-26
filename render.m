@@ -98,9 +98,9 @@ for ii = 1:nCams
     % Intersection of the Plücker line and the geometry
     tZero = zeros(1,nPixels);
     for i = 1:nPixels
-        lambda = (centerCam(3) - U1(3,i)) / u(3,i);
-        U1_mod = U1(1:3,i) + lambda * u(:,i);
-
+        % lambda = (centerCam(3) - U1(3,i)) / u(3,i);
+        % U1_mod = U1(1:3,i) + lambda * u(:,i);
+        U1_mod = U1(1:3,i);
         intersectionFunc = @(t)(zFunc(t*u(1,i)+U1_mod(1),t*u(2,i)+U1_mod(2))-(t*u(3,i)+U1_mod(3)));
         if displayDebug_ && 0
             t_test = -10:0.1:10;
@@ -127,7 +127,7 @@ for ii = 1:nCams
 %             delete(h1)
         end
     end
-    points = tZero.*u+U1_mod(1:3);
+    points = tZero.*u+U1(1:3,:);
     pointMaps(:,:,:,ii) = reshape(points',imageSize(1),imageSize(2),3);
 
     % Depth and distance maps

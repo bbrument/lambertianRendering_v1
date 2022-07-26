@@ -4,7 +4,7 @@ clear
 
 % General parameters
 display_ = 1;
-dataPath = 'data/sphereTest/';
+dataPath = '/tmp/data/bivarTest/';
 
 % Set parameters
 params = setParameters();
@@ -38,8 +38,8 @@ if display_
 end
 
 % Images rendering and depth maps
-[renderedImages,maskMaps,depthMaps,distMaps,normalMaps,albedoMaps] = renderSphere(params);
-% [renderedImages,depthMaps,distMaps,normalMaps,albedoMaps] = render(params);
+% [renderedImages,maskMaps,depthMaps,distMaps,normalMaps,albedoMaps] = renderSphere(params);
+[renderedImages,depthMaps,distMaps,normalMaps,albedoMaps] = render(params);
 
 %% Post-processing depthMaps and normalMaps
 
