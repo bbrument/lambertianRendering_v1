@@ -1,5 +1,5 @@
 %% Render an image from the geometry and camera position
-function [renderedImages,maskMaps,depthMaps,distMaps,normalMaps,albedoMaps] = renderSphere(params)
+function [renderedImages,maskMaps,depthMaps,distMaps,normalMaps,albedoMaps,pointMaps] = renderSphere(params)
 
 % Options
 displayDebug_ = 0;
@@ -13,18 +13,24 @@ K = params.K;
 nCams = params.nCameras;
 w2cPoses = params.w2cPoses;
 cameraType = params.cameraType;
-orthoScale = params.orthoScale;
+if strcmp(cameraType,'ortho')
+    orthoScale = params.orthoScale;
+end
 
+lightMode = params.lightMode;
 lightIntensity = params.lightIntensity;
-lightSource = params.lightSource;
-
-zFunc = params.zFunc;
-normalsFunc = params.normalsFunc;
+nLightSources = params.nLightSources;
+switch lightMode
+    case 'directional'
+        lightSources = params.lightSources;
+    case 'spherical'
+        pointLight = params.pointLight;
+end
 
 albedoFunc = params.albedoFunc;
 
 % Initialization
-renderedImages = zeros([imageSize(1:2) nChannels nCams]);
+renderedImages = zeros([imageSize(1:2) nChannels nCams nLightSources]);
 depthMaps = zeros([imageSize(1:2) nCams]);
 distMaps = zeros([imageSize(1:2) nCams]);
 normalMaps = zeros([imageSize(1:2) 3 nCams]);
@@ -100,10 +106,16 @@ for ii = 1:nCams
     %p1 = lambda1.*u+U1(1:3,:);
     %plot3(p1(1,:),p1(2,:),p1(3,:),'mx')
 
+%     pBar = ProgressBar(nPixels, ...
+%     'IsParallel', true, ...
+%     'WorkerDirectory', pwd(), ...
+%     'Title',[ 'View n°' num2str(ii) ]);
+%     pBar.setup([], [], []);
+
     % Intersection of the Plücker line and the geometry
     tZero = zeros(1,nPixels);
     mask = false(1,nPixels);
-    for i = 1:nPixels
+    for i = progress(1:nPixels)
         u_x = u(1,i);
         u_y = u(2,i);
         u_z = u(3,i);
@@ -149,10 +161,29 @@ for ii = 1:nCams
         if pts(3,argmaxZ) > params.thrZ && delta >= 0
             tZero(i) = t(argmaxZ);
             mask(i) = 1;
+
+            if displayDebug_ && 0
+%                 plot3(pts(1,:), pts(2,:),pts(3,:),...
+%                     'b+','Linewidth',1)
+%                 plot3(pts(1,argmaxZ), pts(2,argmaxZ),pts(3,argmaxZ),...
+%                     'r+','Linewidth',2)
+                normal = pts(:,argmaxZ) - c';
+                normal = normal/norm(normal);
+                quiver3(pts(1,argmaxZ), pts(2,argmaxZ),pts(3,argmaxZ), ...
+                    normal(1),normal(2),normal(3),'m-')
+                quiver3(pts(1,argmaxZ), pts(2,argmaxZ),pts(3,argmaxZ), ...
+                    lightSources(1,1),lightSources(2,1),lightSources(3,1),'c-')
+            end
+
         else
             mask(i) = 0;
         end
+        
+%         updateParallel([], pwd);
     end
+%     pBar.release();
+%     clear pBar
+    
     points = tZero.*u+U1(1:3,:);
     pointMaps(:,:,:,ii) = reshape(points',imageSize(1),imageSize(2),3);
 
@@ -170,33 +201,74 @@ for ii = 1:nCams
     distMaps(:,:,ii) = reshape(distMap,imageSize(1),imageSize(2));
 
     % Normals
-    normals = normalsFunc(points(1,:),points(2,:));
+    % normals = normalsFunc(points(1,:),points(2,:));
+    normals = points - c';
+    normals = real(normals);
+
     normals = normals./vecnorm(normals);
     normalMap = w2cPose(:,1:3)*normals;
     normalMaps(:,:,:,ii) = reshape(normalMap',imageSize(1),imageSize(2),3);
     if displayDebug_
-        selectedPixels = 1:round(nPixels/1000):nPixels;
-        plot3(points(1,selectedPixels),points(2,selectedPixels),points(3,selectedPixels),'mx','Linewidth',2); % Intersection point
-        quiver3(points(1,selectedPixels),points(2,selectedPixels),points(3,selectedPixels),...
-            normals(1,selectedPixels),normals(2,selectedPixels),normals(3,selectedPixels),4,'g','Linewidth',2); % Normal on this point
-        pause
+        selectedPixels = find(mask);
+        selectedPixels = selectedPixels(1:1:end);
+        plot3(points(1,selectedPixels), ...
+            points(2,selectedPixels), ...
+            points(3,selectedPixels), ...
+            'mx','Linewidth',2); % Intersection point
+        quiver3(points(1,selectedPixels), ...
+            points(2,selectedPixels), ...
+            points(3,selectedPixels),...
+            normals(1,selectedPixels), ...
+            normals(2,selectedPixels), ...
+            normals(3,selectedPixels), ...
+            4,'g','Linewidth',2); % Normal on this point
+        %pause
     end
 
     % Albedo
-    albedo = albedoFunc(points(1,:),points(2,:));
-    albedoMaps(:,:,:,ii) = reshape(albedo',...
+    switch params.renderType
+        case '1'
+            albedo = squeeze(albedoFunc(points(1,:),points(2,:)))';
+        case 'gray'
+            albedo = squeeze(albedoFunc(points(1,:),points(2,:)))';
+        case 'rgb'
+            albedo = squeeze(albedoFunc(points(1,:),points(2,:)));
+        case 'noise'
+            albedo = squeeze(albedoFunc(points(1,:),points(2,:)));
+        otherwise
+            continue
+    end
+    albedoMaps(:,:,:,ii) = reshape(albedo,...
         imageSize(1),imageSize(2),nChannels);
 
     % Rendering
-    renderedImage = lightIntensity*albedo'.*(normals'*lightSource);
-    renderedImages(:,:,:,ii) = reshape(renderedImage,...
-        imageSize(1),imageSize(2),nChannels);
+    for jj = 1:nLightSources
+        switch lightMode
+            case 'directional'
+                shading = normals'*lightSources(:,jj);
+                shading = max([shading, zeros(size(shading))],[],2);
+                renderedImage = lightIntensity*albedo.*shading;
+                renderedImages(:,:,:,ii,jj) = reshape(renderedImage,...
+                    imageSize(1),imageSize(2),nChannels);
+            case 'spherical'
+                lightVectors = pointLight' - points;
+                normLightVectors = vecnorm(lightVectors);
+                lightVectors = lightVectors./normLightVectors;
+                sphLightIntensity = lightIntensity ./ (4 * pi * normLightVectors);
+                shading = sphLightIntensity.*dot(normals,lightVectors);
+                shadingClipped = max([shading', zeros(size(shading'))],[],2);
+                renderedImage = albedo.*shadingClipped;
+                renderedImages(:,:,:,ii,jj) = reshape(renderedImage,...
+                    imageSize(1),imageSize(2),nChannels);
+            otherwise
+        end
+    end
 
 end
 
 % Apply masks
 for ii = 1:nChannels
-    renderedImages(:,:,ii,:) = squeeze(renderedImages(:,:,ii,:)).*maskMaps;
+    renderedImages(:,:,ii,:,:) = squeeze(renderedImages(:,:,ii,:,:)).*maskMaps;
     albedoMaps(:,:,ii,:) = squeeze(albedoMaps(:,:,ii,:)).*maskMaps;
 end
 for ii = 1:3

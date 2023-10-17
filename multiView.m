@@ -6,9 +6,10 @@ nCameras = prod(cameraGrid);
 % Camera positions
 if nCameras ~= 1
     x = linspace(-cameraRange,cameraRange,cameraGrid(1));
-    y = linspace(-cameraRange,cameraRange,cameraGrid(2));
+    y = -linspace(-cameraRange,cameraRange,cameraGrid(2));
     [X,Y] = meshgrid(x,y);
     Z = cameraHeight*ones(cameraGrid);
+    X = X'; Y = Y';
     centerCam = [X(:),Y(:),Z(:)]';
 else
     centerCam = [0,0,cameraHeight]';

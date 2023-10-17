@@ -1,8 +1,8 @@
 %% Render an image from the geometry and camera position
-function [renderedImages,maskMaps,depthMaps,distMaps,normalMaps,albedoMaps] = render(params)
+function [renderedImages,maskMaps,depthMaps,distMaps,normalMaps,albedoMaps,pointMaps] = render(params)
 
 % Options
-displayDebug_ = 1;
+displayDebug_ = 0;
 
 % Parameters
 imageSize = params.imageSize;
@@ -13,10 +13,19 @@ K = params.K;
 nCams = params.nCameras;
 w2cPoses = params.w2cPoses;
 cameraType = params.cameraType;
-orthoScale = params.orthoScale;
+if strcmp(cameraType,'ortho')
+    orthoScale = params.orthoScale;
+end
 
+lightMode = params.lightMode;
 lightIntensity = params.lightIntensity;
-lightSource = params.lightSource;
+nLightSources = params.nLightSources;
+switch lightMode
+    case 'directional'
+        lightSources = params.lightSources;
+    case 'spherical'
+        pointLight = params.pointLight;
+end
 
 zFunc = params.zFunc;
 normalsFunc = params.normalsFunc;
@@ -24,7 +33,7 @@ normalsFunc = params.normalsFunc;
 albedoFunc = params.albedoFunc;
 
 % Initialization
-renderedImages = zeros([imageSize(1:2) nChannels nCams]);
+renderedImages = zeros([imageSize(1:2) nChannels nCams nLightSources]);
 depthMaps = zeros([imageSize(1:2) nCams]);
 distMaps = zeros([imageSize(1:2) nCams]);
 normalMaps = zeros([imageSize(1:2) 3 nCams]);
@@ -36,7 +45,7 @@ maskMaps = true([imageSize(1:2) nCams]);
 for ii = 1:nCams
 
     % Log
-    disp([ 'View : ' num2str(ii) ]);
+%     disp([ 'View : ' num2str(ii) ]);
 
     % Load data
     w2cPose = w2cPoses(:,:,ii);
@@ -70,7 +79,8 @@ for ii = 1:nCams
     pi2 = reshape(projMat'*l2,4,1,nPixels);
 
     % Plücker matrix
-    L_dual = pagemtimes(pi1,'none',pi2,'transpose') - pagemtimes(pi2,'none',pi1,'transpose');
+    L_dual = pagemtimes(pi1,'none',pi2,'transpose') ...
+        - pagemtimes(pi2,'none',pi1,'transpose');
     [~,~,V] = pagesvd(L_dual);
     V3 = V(:,3,:); V4 = V(:,4,:);
     L = pagemtimes(V3,'none',V4,'transpose') - pagemtimes(V4,'none',V3,'transpose');
@@ -86,6 +96,8 @@ for ii = 1:nCams
     % Vector of the Plücker line
     u = U2(1:3,:)-U1(1:3,:);
     u = u./vecnorm(u);
+    U1_mod_1 = U1(1,:); U1_mod_2 = U1(2,:); U1_mod_3 = U1(3,:);
+    u1 = u(1,:); u2 = u(2,:); u3 = u(3,:);
     if displayDebug_
         quiver3(centerCam(1),centerCam(2),centerCam(3),...
             u(1,1),u(2,1),u(3,1),0,'g-','Linewidth',2)
@@ -96,19 +108,31 @@ for ii = 1:nCams
     %p1 = lambda1.*u+U1(1:3,:);
     %plot3(p1(1,:),p1(2,:),p1(3,:),'mx')
 
+    pBar = ProgressBar(nPixels, ...
+    'IsParallel', true, ...
+    'WorkerDirectory', pwd(), ...
+    'Title',[ 'View n°' num2str(ii) ]);
+    pBar.setup([], [], []);
+
     % Intersection of the Plücker line and the geometry
-    tZero = zeros(1,nPixels);
-    for i = 1:nPixels
+    tZeroList = zeros(1,nPixels);
+%     for i = progress(1:nPixels)
+    parfor i = 1:nPixels
         % lambda = (centerCam(3) - U1(3,i)) / u(3,i);
         % U1_mod = U1(1:3,i) + lambda * u(:,i);
-        U1_mod = U1(1:3,i);
-        intersectionFunc = @(t)(zFunc(t*u(1,i)+U1_mod(1),t*u(2,i)+U1_mod(2))-(t*u(3,i)+U1_mod(3)));
+        
+        U1_1 = U1_mod_1(i); U1_2 = U1_mod_2(i); U1_3 = U1_mod_3(i);
+        u1_i = u1(i); u2_i = u2(i); u3_i = u3(i);
+
+        intersectionFunc = @(t)(zFunc(t*u1_i+U1_1, ...
+            t*u2_i+U1_2)-(t*u3_i+U1_3));
+
         if displayDebug_ && 0
             t_test = -10:0.1:10;
             points_test = t_test.*u(:,i)+U1_mod;
             h1 = plot3(points_test(1,:),points_test(2,:),points_test(3,:),'c+');
             inter_test = intersectionFunc(t_test);
-            [tZero_test,indtZero_test] = min(abs(inter_test));
+            [~,indtZero_test] = min(abs(inter_test));
             pointsInter_test = points_test(:,indtZero_test);
             h2 = plot3(pointsInter_test(1),pointsInter_test(2),pointsInter_test(3),'m+',...
                 'Linewidth',5);
@@ -116,19 +140,25 @@ for ii = 1:nCams
             delete(h1)
             delete(h2)
         end
-
-        [tZero(i),fVal,exitFlag] = fzero(intersectionFunc,0,optimset('Display','off'));
-        pointInter = tZero(i)*u(1:3,i)+U1_mod;
+        
+        [tZero,~,~] = fzero(intersectionFunc,0,optimset('Display','off'));
+        tZeroList(i) = tZero;
 
         if displayDebug_ && 0
+            pointInter = tZero*[u1_i;u2_i;u3_i]+[U1_1;U1_2;U1_3];
             % plot3([pointInter(1) centerCam(1)],[pointInter(2) centerCam(2)],[pointInter(3) centerCam(3)],'b-')
             h1 = plot3(pointInter(1),pointInter(2),pointInter(3),'gx',...
                 'Linewidth',5);
             %pause
 %             delete(h1)
         end
+    
+        updateParallel([], pwd);
     end
-    points = tZero.*u+U1(1:3,:);
+    pBar.release();
+    clear pBar
+    
+    points = tZeroList.*u+U1(1:3,:);
     pointMaps(:,:,:,ii) = reshape(points',imageSize(1),imageSize(2),3);
 
     % Depth and distance maps
@@ -155,13 +185,40 @@ for ii = 1:nCams
     end
 
     % Albedo
-    albedo = albedoFunc(points(1,:),points(2,:));
-    albedoMaps(:,:,:,ii) = reshape(albedo',...
+    switch params.renderType
+        case '1'
+            albedo = squeeze(albedoFunc(points(1,:),points(2,:)))';
+        case 'gray'
+            albedo = squeeze(albedoFunc(points(1,:),points(2,:)))';
+        case 'rgb'
+            albedo = squeeze(albedoFunc(points(1,:),points(2,:)));
+        case 'noise'
+            albedo = squeeze(albedoFunc(points(1,:),points(2,:)));
+        otherwise
+            albedo = squeeze(albedoFunc(points(1,:),points(2,:)));
+    end
+    albedoMaps(:,:,:,ii) = reshape(albedo,...
         imageSize(1),imageSize(2),nChannels);
 
     % Rendering
-    renderedImage = lightIntensity*albedo'.*(normals'*lightSource);
-    renderedImages(:,:,:,ii) = reshape(renderedImage,...
-        imageSize(1),imageSize(2),nChannels);
-
+    for jj = 1:nLightSources
+        switch lightMode
+            case 'directional'
+                shading = normals'*lightSources(:,jj);
+                renderedImage = lightIntensity*albedo.*max([shading, zeros(size(shading))],[],2);
+                renderedImages(:,:,:,ii,jj) = reshape(renderedImage,...
+                    imageSize(1),imageSize(2),nChannels);
+            case 'spherical'
+                lightVectors = pointLight' - points;
+                normLightVectors = vecnorm(lightVectors);
+                lightVectors = lightVectors./normLightVectors;
+                sphLightIntensity = lightIntensity ./ (4 * pi * normLightVectors);
+                shading = sphLightIntensity.*dot(normals,lightVectors);
+                shadingClipped = max([shading', zeros(size(shading'))],[],2);
+                renderedImage = albedo.*shadingClipped;
+                renderedImages(:,:,:,ii,jj) = reshape(renderedImage,...
+                    imageSize(1),imageSize(2),nChannels);
+            otherwise
+        end
+    end
 end
