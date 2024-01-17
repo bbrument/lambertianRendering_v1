@@ -2,7 +2,7 @@
 function [renderedImages,maskMaps,depthMaps,distMaps,normalMaps,albedoMaps,pointMaps] = renderSphere(params)
 
 % Options
-displayDebug_ = 0;
+displayDebug_ = 1;
 
 % Parameters
 imageSize = params.imageSize;

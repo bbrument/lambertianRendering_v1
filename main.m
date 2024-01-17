@@ -4,7 +4,7 @@ clear
 
 % General parameters
 display_ = 1;
-dataPath = 'data/spherePS_new/';
+dataPath = 'data/pyramid_rgb_1000/';
 if exist(dataPath,'dir') % check if folder does NOT exist
     rmdir(dataPath,'s')
 %     load([ dataPath 'data.mat' ]);
@@ -43,10 +43,10 @@ if display_
             x = -5:0.1:5;
             y = x;
             [X,Y] = meshgrid(x,y);
-            surf(X,Y,params.zFunc(X,Y),uint8(params.repCam*params.albedoFunc(X,Y)));
-%             surf(X,Y,params.zFunc(X,Y));
-%             normals = params.normalsFunc(X(:)',Y(:)');
-%             quiver3(X(:),Y(:),params.zFunc(X(:),Y(:)),normals(1,:)',normals(2,:)',normals(3,:)');
+%             surf(X,Y,params.zFunc(X,Y),uint8(params.repCam*params.albedoFunc(X,Y)));
+            surf(X,Y,params.zFunc(X,Y));
+            normals = params.normalsFunc(X(:)',Y(:)');
+            quiver3(X(:),Y(:),params.zFunc(X(:),Y(:)),normals(1,:)',normals(2,:)',normals(3,:)');
     end
     shading interp
     axis tight

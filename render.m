@@ -177,11 +177,12 @@ for ii = 1:nCams
     normalMap = w2cPose(:,1:3)*normals;
     normalMaps(:,:,:,ii) = reshape(normalMap',imageSize(1),imageSize(2),3);
     if displayDebug_
-        selectedPixels = 1:round(nPixels/1000):nPixels;
+%         selectedPixels = 1:round(nPixels/1000):nPixels;
+        selectedPixels = randsample(1:nPixels, 1000);
         plot3(points(1,selectedPixels),points(2,selectedPixels),points(3,selectedPixels),'mx','Linewidth',2); % Intersection point
         quiver3(points(1,selectedPixels),points(2,selectedPixels),points(3,selectedPixels),...
             normals(1,selectedPixels),normals(2,selectedPixels),normals(3,selectedPixels),4,'g','Linewidth',2); % Normal on this point
-        %pause
+        pause
     end
 
     % Albedo

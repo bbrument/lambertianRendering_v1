@@ -5,7 +5,7 @@ function params = setParameters()
 params.factor = 1; % downscale factor
 params.imageSize = [1000 1000]/params.factor; % rendered image size
 params.nChannels = 1; % number of channels of the rendered image
-params.renderType = '1'; % '1' for an homogeneous albedo, 'gray' for gray-scaled one or 'rgb' for an colored one
+params.renderType = 'rgb'; % '1' for an homogeneous albedo, 'gray' for gray-scaled one or 'rgb' for an colored one
 if strcmp(params.renderType,'rgb') || strcmp(params.renderType,'noise') % if renderType is 'rgb', update imageSize and nChannels
     params.imageSize = [params.imageSize 3];
     params.nChannels = 3;
@@ -20,10 +20,10 @@ params.K = [f 0 px ; 0 f py ; 0 0 1];
 % params.K = [500 0 px ; 0 500 py ; 0 0 1];
 
 % Camera poses (generated on a grid pointing at the center of the scene)
-params.cameraGrid = [1 1]; % number of cameras along x and y
-params.cameraRange = 20;%1 % range along both axis (spherePS:20)
-params.cameraHeight = 95;%5 % (spherePS:95)
-params.pointLookAt = [0,0,0];%[0.1,-0.2,2.8]; %[0,0,-5] %(spherePS:[0,0,0])
+params.cameraGrid = [3 3]; % number of cameras along x and y
+params.cameraRange = 1; % range along both axis (spherePS:20)
+params.cameraHeight = 5; % (spherePS:95)
+params.pointLookAt = [0,0,-5];%[0.1,-0.2,2.8]; %[0,0,-5] %(spherePS:[0,0,0])
 params.w2cPoses = multiView(params.cameraGrid,params.cameraRange,...
     params.cameraHeight,params.pointLookAt); % cameras poses (world-to-camera matrices)
 % pixelDisplacement = 100.5;
@@ -56,7 +56,7 @@ params.lightMode = 'directional'; % 'directional' or 'spherical'
 switch params.lightMode
     case 'directional'
         params.lightIntensity = 1; % light intensity
-        params.nLightSources = 9;
+        params.nLightSources = 1;
         theta = deg2rad(45);
         psi = deg2rad(45);
         angles = [0 theta theta theta 0 0 -theta -theta -theta;
@@ -64,6 +64,14 @@ switch params.lightMode
         params.lightSources = [cos(angles(1,:)).*sin(angles(2,:));
             -sin(angles(1,:));
             cos(angles(1,:)).*cos(angles(2,:))];
+
+        % for pyramid
+        theta = deg2rad(30);
+        psi = deg2rad(30);
+        angles = [theta; psi];
+        params.lightSources = [cos(angles(1))*sin(angles(2));
+            -sin(angles(1));
+            cos(angles(1))*cos(angles(2))];
     case 'spherical'
         params.nLightSources = 1;
         params.pointLight = [5 5 10];
@@ -72,7 +80,7 @@ switch params.lightMode
 end
 
 % Scene parameters
-params.geometryType = 'sphere';
+params.geometryType = 'pyramid';
 switch params.geometryType
     case 'gaussian'
         mu = [0.2 0.4];
@@ -135,6 +143,12 @@ switch params.geometryType
             ones(size(X))]);
         params.geomRange = [-10 10];
 
+    case 'pyramid'
+        baseSide = 5;
+        height = 2;
+        params.zFunc = @(X,Y) pyramidFunc(X,Y,baseSide,height);
+        params.normalsFunc = @(X,Y) pyramidNormalsFunc(X,Y,baseSide,height);
+        params.geomRange = [-5 5];
 end
 
 % Albedo
